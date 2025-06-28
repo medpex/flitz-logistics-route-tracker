@@ -34,6 +34,9 @@ const Index = () => {
     return stored ? (stored as ViewType) : "overview";
   });
 
+  console.log('User nach Reload:', user);
+  console.log('View nach Reload:', currentView);
+
   useEffect(() => {
     if (user) {
       localStorage.setItem("user", JSON.stringify(user));
