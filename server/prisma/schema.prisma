@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   // "driver" | "admin"
+  createdAt DateTime @default(now())
+}
+
+model Driver {
+  id             String   @id @default(uuid())
+  name           String
+  employeeNumber String   @unique
+  email          String?
+  status         String   // "active" | "inactive"
+  createdAt      DateTime @default(now())
+  trips          Trip[]
+  appointments   Appointment[]
+}
+
+model Trip {
+  id            String   @id @default(uuid())
+  driver        Driver   @relation(fields: [driverId], references: [id])
+  driverId      String
+  driverName    String
+  date          DateTime
+  time          String
+  startLocation String
+  stations      String[]
+  endLocation   String
+  purpose       String
+  status        String   // "scheduled" | "active" | "completed"
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  appointmentId String?
+  startKm       Int?
+  startTime     String?
+  endKm         Int?
+  endTime       String?
+  totalDistance Int?
+  createdAt     DateTime @default(now())
+}
+
+model Appointment {
+  id            String   @id @default(uuid())
+  driver        Driver   @relation(fields: [driverId], references: [id])
+  driverId      String
+  driverName    String
+  date          DateTime
+  time          String
+  startLocation String
+  stations      String[]
+  endLocation   String
+  purpose       String
+  status        String   // "pending" | "accepted" | "declined"
+  createdAt     DateTime @default(now())
+  trips         Trip[]
+}
