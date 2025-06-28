@@ -31,6 +31,8 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001 && \
+    mkdir -p /run/nginx && \
+    chown -R nextjs:nodejs /run/nginx && \
     chown -R nextjs:nodejs /usr/share/nginx/html && \
     chown -R nextjs:nodejs /var/cache/nginx && \
     chown -R nextjs:nodejs /var/log/nginx && \
