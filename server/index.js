@@ -41,7 +41,9 @@ app.post('/api/login', async (req, res) => {
       if (!user) {
         return res.status(401).json({ error: 'Admin nicht gefunden' });
       }
+      console.log('Vergleiche:', password, user.password);
       const valid = await bcrypt.compare(password, user.password);
+      console.log('Vergleichsergebnis:', valid);
       if (!valid) {
         return res.status(401).json({ error: 'Falsches Passwort' });
       }
