@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +64,6 @@ export const MyTrips = ({ user }: MyTripsProps) => {
   }, [user.id]);
 
   const loadTrips = () => {
-    // Lade alle Fahrten aus localStorage
     const allTrips = JSON.parse(localStorage.getItem('trips') || '[]');
     const userTrips = allTrips.filter((trip: Trip) => trip.driverId === user.id);
     
@@ -117,21 +115,13 @@ export const MyTrips = ({ user }: MyTripsProps) => {
       return;
     }
 
-    // Initialisiere Station Entries für alle Stationen
-    const stationEntries: StationEntry[] = [
-      ...trip.stations.map(station => ({
-        location: station,
-        km: 0,
-        time: "",
-        completed: false
-      })),
-      {
-        location: trip.endLocation,
-        km: 0,
-        time: "",
-        completed: false
-      }
-    ];
+    // Only create station entries for the actual stations, not the end location
+    const stationEntries: StationEntry[] = trip.stations.map(station => ({
+      location: station,
+      km: 0,
+      time: "",
+      completed: false
+    }));
 
     const updatedTrip = {
       ...trip,
@@ -141,7 +131,6 @@ export const MyTrips = ({ user }: MyTripsProps) => {
       stationEntries: stationEntries
     };
 
-    // Aktualisiere Fahrten
     const allTrips = JSON.parse(localStorage.getItem('trips') || '[]');
     const otherTrips = allTrips.filter((t: Trip) => t.id !== trip.id && t.appointmentId !== trip.appointmentId);
     const updatedTrips = [...otherTrips, updatedTrip];
@@ -172,7 +161,7 @@ export const MyTrips = ({ user }: MyTripsProps) => {
       stationEntries: updatedStationEntries
     };
 
-    // Prüfen ob alle Stationen abgeschlossen sind
+    // Check if all stations are completed
     const allCompleted = updatedStationEntries.every(entry => entry.completed);
     if (allCompleted) {
       const lastStation = updatedStationEntries[updatedStationEntries.length - 1];
@@ -182,7 +171,6 @@ export const MyTrips = ({ user }: MyTripsProps) => {
       updatedTrip.status = "completed";
     }
 
-    // Aktualisiere Fahrten
     const allTrips = JSON.parse(localStorage.getItem('trips') || '[]');
     const otherTrips = allTrips.filter((t: Trip) => t.id !== activeTrip.id && t.appointmentId !== activeTrip.appointmentId);
     const updatedTrips = [...otherTrips, updatedTrip];
