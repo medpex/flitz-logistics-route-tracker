@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -95,16 +94,12 @@ export const DriverAppointments = ({ user }: DriverAppointmentsProps) => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                {appointment.startLocation && (
                   <div>
                     <span className="font-medium">Start:</span>
                     <p>{appointment.startLocation}</p>
                   </div>
-                  <div>
-                    <span className="font-medium">Ziel:</span>
-                    <p>{appointment.endLocation}</p>
-                  </div>
-                </div>
+                )}
 
                 {appointment.stations && appointment.stations.length > 0 && (
                   <div>
@@ -117,13 +112,6 @@ export const DriverAppointments = ({ user }: DriverAppointmentsProps) => {
                         </Badge>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {appointment.purpose && (
-                  <div>
-                    <span className="font-medium">Zweck:</span>
-                    <p className="text-sm text-gray-600 mt-1">{appointment.purpose}</p>
                   </div>
                 )}
 
@@ -174,16 +162,12 @@ export const DriverAppointments = ({ user }: DriverAppointmentsProps) => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                {appointment.startLocation && (
                   <div>
                     <span className="font-medium">Start:</span>
                     <p>{appointment.startLocation}</p>
                   </div>
-                  <div>
-                    <span className="font-medium">Ziel:</span>
-                    <p>{appointment.endLocation}</p>
-                  </div>
-                </div>
+                )}
 
                 {appointment.stations && appointment.stations.length > 0 && (
                   <div>
@@ -196,13 +180,6 @@ export const DriverAppointments = ({ user }: DriverAppointmentsProps) => {
                         </Badge>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {appointment.purpose && (
-                  <div>
-                    <span className="font-medium">Zweck:</span>
-                    <p className="text-sm text-gray-600 mt-1">{appointment.purpose}</p>
                   </div>
                 )}
               </CardContent>

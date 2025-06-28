@@ -1,10 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User } from "@/pages/Index";
@@ -42,9 +40,7 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
     driverId: "",
     date: "",
     time: "",
-    startLocation: "",
-    endLocation: "",
-    purpose: ""
+    startLocation: ""
   });
 
   useEffect(() => {
@@ -87,8 +83,8 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
       time: newAppointment.time,
       startLocation: newAppointment.startLocation,
       stations: stations,
-      endLocation: newAppointment.endLocation,
-      purpose: newAppointment.purpose,
+      endLocation: "",
+      purpose: "",
       status: "pending"
     };
 
@@ -101,9 +97,7 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
       driverId: "",
       date: "",
       time: "",
-      startLocation: "",
-      endLocation: "",
-      purpose: ""
+      startLocation: ""
     });
     setStationsInput("");
     setShowForm(false);
@@ -202,12 +196,13 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
               </div>
 
               <div>
-                <Label htmlFor="stations">Stationen (durch Komma getrennt)</Label>
+                <Label htmlFor="stations">Stationen (durch Komma getrennt) *</Label>
                 <Input
                   id="stations"
                   value={stationsInput}
                   onChange={(e) => setStationsInput(e.target.value)}
                   placeholder="z.B. Hotel Berlin, Restaurant Hamburg, Messe Frankfurt"
+                  required
                 />
                 {stationsInput && (
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -222,26 +217,6 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
                     })}
                   </div>
                 )}
-              </div>
-
-              <div>
-                <Label htmlFor="endLocation">Zielort</Label>
-                <Input
-                  id="endLocation"
-                  value={newAppointment.endLocation}
-                  onChange={(e) => setNewAppointment({...newAppointment, endLocation: e.target.value})}
-                  placeholder="z.B. Kunde Berlin"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="purpose">Zweck der Fahrt</Label>
-                <Textarea
-                  id="purpose"
-                  value={newAppointment.purpose}
-                  onChange={(e) => setNewAppointment({...newAppointment, purpose: e.target.value})}
-                  placeholder="Beschreibung des Termins..."
-                />
               </div>
 
               <div className="flex gap-2">
@@ -288,16 +263,12 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                {appointment.startLocation && (
                   <div>
                     <span className="font-medium">Start:</span>
                     <p>{appointment.startLocation}</p>
                   </div>
-                  <div>
-                    <span className="font-medium">Ziel:</span>
-                    <p>{appointment.endLocation}</p>
-                  </div>
-                </div>
+                )}
 
                 {appointment.stations && appointment.stations.length > 0 && (
                   <div>
@@ -310,13 +281,6 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
                         </Badge>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {appointment.purpose && (
-                  <div>
-                    <span className="font-medium">Zweck:</span>
-                    <p className="text-sm text-gray-600 mt-1">{appointment.purpose}</p>
                   </div>
                 )}
               </CardContent>
