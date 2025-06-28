@@ -200,6 +200,18 @@ app.patch('/api/appointments/:id', async (req, res) => {
   }
 });
 
+// DELETE Appointment
+app.delete('/api/appointments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.appointment.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Appointment-Delete-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Löschen des Termins' });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend listening on port ${PORT}`);

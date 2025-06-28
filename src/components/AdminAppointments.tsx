@@ -40,73 +40,111 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
     driverId: "",
     date: "",
     time: "",
-    startLocation: ""
+    startLocation: "",
+    endLocation: "",
+    purpose: ""
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadAppointments();
     loadDrivers();
   }, []);
 
-  const loadAppointments = () => {
-    const savedAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-    setAppointments(savedAppointments);
+  const loadAppointments = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/appointments');
+      const data = await res.json();
+      setAppointments(data);
+    } catch (e) {
+      setError('Fehler beim Laden der Termine');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loadDrivers = () => {
-    const savedDrivers = JSON.parse(localStorage.getItem('drivers') || '[]');
-    setDrivers(savedDrivers);
+  const loadDrivers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/drivers');
+      const data = await res.json();
+      setDrivers(data);
+    } catch (e) {
+      setError('Fehler beim Laden der Fahrer');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!newAppointment.driverId || !newAppointment.date || !newAppointment.time) {
       alert("Bitte füllen Sie alle Pflichtfelder aus");
       return;
     }
-
     const selectedDriver = drivers.find(d => d.id === newAppointment.driverId);
     if (!selectedDriver) return;
-
-    // Parse stations from comma-separated input
     const stations = stationsInput
       .split(',')
       .map(station => station.trim())
       .filter(station => station.length > 0);
-
-    const appointment: Appointment = {
-      id: Math.random().toString(36).substr(2, 9),
+    const appointment = {
       driverId: newAppointment.driverId,
       driverName: selectedDriver.name,
       date: newAppointment.date,
       time: newAppointment.time,
       startLocation: newAppointment.startLocation,
       stations: stations,
-      endLocation: "",
-      purpose: "",
+      endLocation: newAppointment.endLocation,
+      purpose: newAppointment.purpose,
       status: "pending"
     };
-
-    const updatedAppointments = [...appointments, appointment];
-    localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
-    setAppointments(updatedAppointments);
-    
-    // Reset form
-    setNewAppointment({
-      driverId: "",
-      date: "",
-      time: "",
-      startLocation: ""
-    });
-    setStationsInput("");
-    setShowForm(false);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(appointment),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Fehler beim Anlegen des Termins');
+        setLoading(false);
+        return;
+      }
+      setShowForm(false);
+      setNewAppointment({ driverId: "", date: "", time: "", startLocation: "", endLocation: "", purpose: "" });
+      setStationsInput("");
+      loadAppointments();
+    } catch (e) {
+      setError('Fehler beim Anlegen des Termins');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteAppointment = (id: string) => {
-    const updatedAppointments = appointments.filter(apt => apt.id !== id);
-    localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
-    setAppointments(updatedAppointments);
+  const deleteAppointment = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Fehler beim Löschen des Termins');
+        setLoading(false);
+        return;
+      }
+      loadAppointments();
+    } catch (e) {
+      setError('Fehler beim Löschen des Termins');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
