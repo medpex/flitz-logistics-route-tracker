@@ -3,6 +3,11 @@ import { useState } from "react";
 import { LoginForm } from "@/components/LoginForm";
 import { DriverDashboard } from "@/components/DriverDashboard";
 import { AdminDashboard } from "@/components/AdminDashboard";
+import { NewTrip } from "@/components/NewTrip";
+import { MyTrips } from "@/components/MyTrips";
+import { AllTrips } from "@/components/AllTrips";
+import { Reports } from "@/components/Reports";
+import { Drivers } from "@/components/Drivers";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -17,15 +22,47 @@ export interface User {
   role: UserRole;
 }
 
+export type ViewType = "overview" | "new-trip" | "my-trips" | "dashboard" | "all-trips" | "reports" | "drivers";
+
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [currentView, setCurrentView] = useState<ViewType>("overview");
 
   const handleLogin = (userData: User) => {
     setUser(userData);
+    setCurrentView(userData.role === "admin" ? "dashboard" : "overview");
   };
 
   const handleLogout = () => {
     setUser(null);
+    setCurrentView("overview");
+  };
+
+  const handleViewChange = (view: ViewType) => {
+    setCurrentView(view);
+  };
+
+  const renderCurrentView = () => {
+    if (!user) return null;
+
+    switch (currentView) {
+      case "overview":
+        return user.role === "driver" ? <DriverDashboard user={user} /> : <AdminDashboard user={user} />;
+      case "dashboard":
+        return <AdminDashboard user={user} />;
+      case "new-trip":
+        return <NewTrip user={user} />;
+      case "my-trips":
+        return <MyTrips user={user} />;
+      case "all-trips":
+        return <AllTrips user={user} />;
+      case "reports":
+        return <Reports user={user} />;
+      case "drivers":
+        return <Drivers user={user} />;
+      default:
+        return user.role === "driver" ? <DriverDashboard user={user} /> : <AdminDashboard user={user} />;
+    }
   };
 
   if (!user) {
@@ -35,7 +72,7 @@ const Index = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar user={user} />
+        <AppSidebar user={user} currentView={currentView} onViewChange={handleViewChange} />
         
         <div className="flex-1 flex flex-col">
           <header className="h-16 border-b bg-white flex items-center justify-between px-6">
@@ -63,11 +100,7 @@ const Index = () => {
           </header>
 
           <main className="flex-1 p-6 bg-gray-50">
-            {user.role === "driver" ? (
-              <DriverDashboard user={user} />
-            ) : (
-              <AdminDashboard user={user} />
-            )}
+            {renderCurrentView()}
           </main>
         </div>
       </div>

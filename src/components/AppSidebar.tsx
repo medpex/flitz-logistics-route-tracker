@@ -1,5 +1,4 @@
 
-import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -20,35 +19,35 @@ import {
   Truck,
   Home
 } from "lucide-react";
-import { User } from "@/pages/Index";
+import { User, ViewType } from "@/pages/Index";
 
 interface AppSidebarProps {
   user: User;
+  currentView: ViewType;
+  onViewChange: (view: ViewType) => void;
 }
 
-export const AppSidebar = ({ user }: AppSidebarProps) => {
+export const AppSidebar = ({ user, currentView, onViewChange }: AppSidebarProps) => {
   const { state } = useSidebar();
-  const location = useLocation();
-  const currentPath = location.pathname;
   const collapsed = state === "collapsed";
 
   const driverItems = [
-    { title: "Übersicht", url: "#overview", icon: Home },
-    { title: "Neue Fahrt", url: "#new-trip", icon: Plus },
-    { title: "Meine Fahrten", url: "#my-trips", icon: List },
+    { title: "Übersicht", view: "overview" as ViewType, icon: Home },
+    { title: "Neue Fahrt", view: "new-trip" as ViewType, icon: Plus },
+    { title: "Meine Fahrten", view: "my-trips" as ViewType, icon: List },
   ];
 
   const adminItems = [
-    { title: "Dashboard", url: "#dashboard", icon: BarChart3 },
-    { title: "Alle Fahrten", url: "#all-trips", icon: List },
-    { title: "Berichte", url: "#reports", icon: FileText },
-    { title: "Fahrer", url: "#drivers", icon: Users },
+    { title: "Dashboard", view: "dashboard" as ViewType, icon: BarChart3 },
+    { title: "Alle Fahrten", view: "all-trips" as ViewType, icon: List },
+    { title: "Berichte", view: "reports" as ViewType, icon: FileText },
+    { title: "Fahrer", view: "drivers" as ViewType, icon: Users },
   ];
 
   const items = user.role === "admin" ? adminItems : driverItems;
 
-  const getNavCls = (url: string) => {
-    const isActive = currentPath === url || (url === "#overview" && currentPath === "/");
+  const getNavCls = (view: ViewType) => {
+    const isActive = currentView === view;
     return isActive ? "bg-blue-100 text-blue-700 font-medium" : "hover:bg-gray-100";
   };
 
@@ -79,13 +78,13 @@ export const AppSidebar = ({ user }: AppSidebarProps) => {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <a 
-                      href={item.url} 
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${getNavCls(item.url)}`}
+                    <button 
+                      onClick={() => onViewChange(item.view)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${getNavCls(item.view)}`}
                     >
                       <item.icon className="h-5 w-5" />
                       {!collapsed && <span>{item.title}</span>}
-                    </a>
+                    </button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
