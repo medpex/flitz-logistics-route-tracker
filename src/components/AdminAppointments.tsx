@@ -299,7 +299,7 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
                   </div>
                 </div>
 
-                {appointment.stations.length > 0 && (
+                {appointment.stations && appointment.stations.length > 0 && (
                   <div>
                     <span className="font-medium">Stationen:</span>
                     <div className="flex flex-wrap gap-2 mt-2">
