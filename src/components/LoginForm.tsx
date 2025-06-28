@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,52 +12,51 @@ interface LoginFormProps {
 }
 
 export const LoginForm = ({ onLogin }: LoginFormProps) => {
+  const [role, setRole] = useState<UserRole>("driver");
   const [name, setName] = useState("");
   const [employeeNumber, setEmployeeNumber] = useState("");
-  const [role, setRole] = useState<UserRole>("driver");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
-    if (role === "admin") {
-      // Admin Login - nur Name erforderlich
-      if (name.trim()) {
-        onLogin({
-          id: 'admin',
-          name: name.trim(),
-          role: 'admin'
-        });
+    setLoading(true);
+    try {
+      let payload: any = { role };
+      if (role === "driver") {
+        if (!name.trim() || !employeeNumber.trim()) {
+          setError("Bitte Name und Personalnummer eingeben");
+          setLoading(false);
+          return;
+        }
+        payload = { ...payload, name: name.trim(), employeeNumber: employeeNumber.trim() };
+      } else {
+        if (!email.trim() || !password.trim()) {
+          setError("Bitte E-Mail und Passwort eingeben");
+          setLoading(false);
+          return;
+        }
+        payload = { ...payload, email: email.trim(), password };
       }
-    } else {
-      // Fahrer Login - Name und Personalnummer erforderlich
-      if (!name.trim() || !employeeNumber.trim()) {
-        setError("Bitte Name und Personalnummer eingeben");
-        return;
-      }
-
-      // Prüfen ob Fahrer existiert
-      const drivers = JSON.parse(localStorage.getItem('drivers') || '[]');
-      const driver = drivers.find((d: any) => 
-        d.name === name.trim() && d.employeeNumber === employeeNumber.trim()
-      );
-
-      if (!driver) {
-        setError("Fahrer nicht gefunden. Bitte wenden Sie sich an den Administrator.");
-        return;
-      }
-
-      if (driver.status !== 'active') {
-        setError("Ihr Account ist deaktiviert. Bitte wenden Sie sich an den Administrator.");
-        return;
-      }
-
-      onLogin({
-        id: driver.id,
-        name: driver.name,
-        role: 'driver'
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Anmeldung fehlgeschlagen");
+        setLoading(false);
+        return;
+      }
+      onLogin({ id: data.id, name: data.name, role: data.role });
+    } catch (err) {
+      setError("Serverfehler. Bitte versuchen Sie es später erneut.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,7 +74,6 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
             Melden Sie sich an, um fortzufahren
           </CardDescription>
         </CardHeader>
-        
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -101,43 +98,68 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Ihr Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full"
-              />
-            </div>
-            
-            {role === "driver" && (
-              <div className="space-y-2">
-                <Label htmlFor="employeeNumber">Personalnummer</Label>
-                <Input
-                  id="employeeNumber"
-                  type="text"
-                  placeholder="Ihre Personalnummer"
-                  value={employeeNumber}
-                  onChange={(e) => setEmployeeNumber(e.target.value)}
-                  required
-                  className="w-full"
-                />
-              </div>
+            {role === "driver" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Ihr Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="employeeNumber">Personalnummer</Label>
+                  <Input
+                    id="employeeNumber"
+                    type="text"
+                    placeholder="Ihre Personalnummer"
+                    value={employeeNumber}
+                    onChange={(e) => setEmployeeNumber(e.target.value)}
+                    required
+                    className="w-full"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-Mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Ihre E-Mail"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Passwort</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Ihr Passwort"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full"
+                  />
+                </div>
+              </>
             )}
-
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
                 {error}
               </div>
             )}
-            
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Anmelden
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+              {loading ? "Anmelden..." : "Anmelden"}
             </Button>
           </form>
         </CardContent>
