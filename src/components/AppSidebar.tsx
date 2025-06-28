@@ -27,9 +27,10 @@ interface AppSidebarProps {
 }
 
 export const AppSidebar = ({ user }: AppSidebarProps) => {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
+  const collapsed = state === "collapsed";
 
   const driverItems = [
     { title: "Übersicht", url: "#overview", icon: Home },
@@ -52,7 +53,7 @@ export const AppSidebar = ({ user }: AppSidebarProps) => {
   };
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible>
+    <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent className="bg-white border-r">
         <div className="p-4 border-b">
           <div className="flex items-center gap-3">
