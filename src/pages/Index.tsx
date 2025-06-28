@@ -8,6 +8,8 @@ import { MyTrips } from "@/components/MyTrips";
 import { AllTrips } from "@/components/AllTrips";
 import { Reports } from "@/components/Reports";
 import { Drivers } from "@/components/Drivers";
+import { DriverAppointments } from "@/components/DriverAppointments";
+import { AdminAppointments } from "@/components/AdminAppointments";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -22,7 +24,7 @@ export interface User {
   role: UserRole;
 }
 
-export type ViewType = "overview" | "new-trip" | "my-trips" | "dashboard" | "all-trips" | "reports" | "drivers";
+export type ViewType = "overview" | "new-trip" | "my-trips" | "dashboard" | "all-trips" | "reports" | "drivers" | "appointments";
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -60,6 +62,8 @@ const Index = () => {
         return <Reports user={user} />;
       case "drivers":
         return <Drivers user={user} />;
+      case "appointments":
+        return user.role === "driver" ? <DriverAppointments user={user} /> : <AdminAppointments user={user} />;
       default:
         return user.role === "driver" ? <DriverDashboard user={user} /> : <AdminDashboard user={user} />;
     }

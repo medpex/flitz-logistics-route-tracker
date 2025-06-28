@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,18 +34,48 @@ export const NewTrip = ({ user }: NewTripProps) => {
       alert("Bitte füllen Sie alle Felder aus");
       return;
     }
+
+    const startKm = parseInt(tripData.startKm);
+    const endKm = parseInt(tripData.endKm);
+    
+    if (endKm <= startKm) {
+      alert("End-Kilometerstand muss höher als Start-Kilometerstand sein");
+      return;
+    }
+
+    // Fahrt in localStorage speichern
+    const trip = {
+      id: Math.random().toString(36).substr(2, 9),
+      driverId: user.id,
+      driverName: user.name,
+      date: new Date().toISOString(),
+      startKm: startKm,
+      endKm: endKm,
+      distance: endKm - startKm,
+      startLocation: tripData.startLocation,
+      endLocation: tripData.endLocation,
+      purpose: tripData.purpose
+    };
+
+    const existingTrips = JSON.parse(localStorage.getItem('trips') || '[]');
+    const updatedTrips = [...existingTrips, trip];
+    localStorage.setItem('trips', JSON.stringify(updatedTrips));
+
     setTripData({ ...tripData, isCompleted: true });
-    alert("Fahrt erfolgreich beendet!");
+    alert("Fahrt erfolgreich beendet und gespeichert!");
+    
     // Reset form
-    setTripData({
-      startKm: "",
-      endKm: "",
-      startLocation: "",
-      endLocation: "",
-      purpose: "",
-      isStarted: false,
-      isCompleted: false
-    });
+    setTimeout(() => {
+      setTripData({
+        startKm: "",
+        endKm: "",
+        startLocation: "",
+        endLocation: "",
+        purpose: "",
+        isStarted: false,
+        isCompleted: false
+      });
+    }, 2000);
   };
 
   const handleReset = () => {
