@@ -14,15 +14,50 @@ interface LoginFormProps {
 
 export const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [name, setName] = useState("");
+  const [employeeNumber, setEmployeeNumber] = useState("");
   const [role, setRole] = useState<UserRole>("driver");
+  const [error, setError] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
+    setError("");
+    
+    if (role === "admin") {
+      // Admin Login - nur Name erforderlich
+      if (name.trim()) {
+        onLogin({
+          id: 'admin',
+          name: name.trim(),
+          role: 'admin'
+        });
+      }
+    } else {
+      // Fahrer Login - Name und Personalnummer erforderlich
+      if (!name.trim() || !employeeNumber.trim()) {
+        setError("Bitte Name und Personalnummer eingeben");
+        return;
+      }
+
+      // Prüfen ob Fahrer existiert
+      const drivers = JSON.parse(localStorage.getItem('drivers') || '[]');
+      const driver = drivers.find((d: any) => 
+        d.name === name.trim() && d.employeeNumber === employeeNumber.trim()
+      );
+
+      if (!driver) {
+        setError("Fahrer nicht gefunden. Bitte wenden Sie sich an den Administrator.");
+        return;
+      }
+
+      if (driver.status !== 'active') {
+        setError("Ihr Account ist deaktiviert. Bitte wenden Sie sich an den Administrator.");
+        return;
+      }
+
       onLogin({
-        id: Math.random().toString(36).substr(2, 9),
-        name: name.trim(),
-        role
+        id: driver.id,
+        name: driver.name,
+        role: 'driver'
       });
     }
   };
@@ -45,19 +80,6 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Ihr Name eingeben"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full"
-              />
-            </div>
-            
-            <div className="space-y-2">
               <Label htmlFor="role">Benutzerrolle</Label>
               <Select value={role} onValueChange={(value: UserRole) => setRole(value)}>
                 <SelectTrigger>
@@ -79,6 +101,40 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Ihr Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full"
+              />
+            </div>
+            
+            {role === "driver" && (
+              <div className="space-y-2">
+                <Label htmlFor="employeeNumber">Personalnummer</Label>
+                <Input
+                  id="employeeNumber"
+                  type="text"
+                  placeholder="Ihre Personalnummer"
+                  value={employeeNumber}
+                  onChange={(e) => setEmployeeNumber(e.target.value)}
+                  required
+                  className="w-full"
+                />
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+                {error}
+              </div>
+            )}
             
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
               Anmelden
