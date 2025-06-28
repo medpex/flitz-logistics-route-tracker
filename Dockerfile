@@ -1,4 +1,3 @@
-
 # Multi-stage build for optimized production image
 FROM node:18-alpine AS builder
 
@@ -8,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies (inkl. DevDependencies für Build)
+RUN npm ci && npm cache clean --force
 
 # Copy source code
 COPY . .
