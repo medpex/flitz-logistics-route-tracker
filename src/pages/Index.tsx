@@ -3,7 +3,6 @@ import { useState } from "react";
 import { LoginForm } from "@/components/LoginForm";
 import { DriverDashboard } from "@/components/DriverDashboard";
 import { AdminDashboard } from "@/components/AdminDashboard";
-import { NewTrip } from "@/components/NewTrip";
 import { MyTrips } from "@/components/MyTrips";
 import { AllTrips } from "@/components/AllTrips";
 import { Reports } from "@/components/Reports";
@@ -24,7 +23,7 @@ export interface User {
   role: UserRole;
 }
 
-export type ViewType = "overview" | "new-trip" | "my-trips" | "dashboard" | "all-trips" | "reports" | "drivers" | "appointments";
+export type ViewType = "overview" | "my-trips" | "dashboard" | "all-trips" | "reports" | "drivers" | "appointments";
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -52,8 +51,6 @@ const Index = () => {
         return user.role === "driver" ? <DriverDashboard user={user} /> : <AdminDashboard user={user} />;
       case "dashboard":
         return <AdminDashboard user={user} />;
-      case "new-trip":
-        return <NewTrip user={user} />;
       case "my-trips":
         return <MyTrips user={user} />;
       case "all-trips":

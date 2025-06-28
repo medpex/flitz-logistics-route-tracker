@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/sidebar"
 import { 
   Home, 
-  Plus, 
   Car, 
   Users, 
   FileText, 
@@ -32,11 +31,6 @@ export function AppSidebar({ user, currentView, onViewChange }: AppSidebarProps)
       title: "Übersicht",
       icon: Home,
       view: "overview" as ViewType,
-    },
-    {
-      title: "Neue Fahrt",
-      icon: Plus,
-      view: "new-trip" as ViewType,
     },
     {
       title: "Meine Fahrten",
