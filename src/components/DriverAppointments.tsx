@@ -24,32 +24,52 @@ interface Appointment {
 
 export const DriverAppointments = ({ user }: DriverAppointmentsProps) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadAppointments();
   }, [user.id]);
 
-  const loadAppointments = () => {
-    const allAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-    const userAppointments = allAppointments.filter(
-      (apt: Appointment) => apt.driverId === user.id
-    );
-    setAppointments(userAppointments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+  const loadAppointments = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/appointments?driverId=${user.id}`);
+      const data = await res.json();
+      setAppointments(data);
+    } catch (e) {
+      setError('Fehler beim Laden der Termine');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAppointmentResponse = (appointmentId: string, status: "accepted" | "declined") => {
-    const allAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-    const updatedAppointments = allAppointments.map((apt: Appointment) => 
-      apt.id === appointmentId ? { ...apt, status } : apt
-    );
-    
-    localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
-    loadAppointments();
-    
-    if (status === "accepted") {
-      alert("Termin angenommen! Sie finden ihn jetzt unter 'Meine Fahrten'.");
-    } else {
-      alert("Termin abgelehnt.");
+  const handleAppointmentResponse = async (appointmentId: string, status: "accepted" | "declined") => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/appointments/${appointmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Fehler beim Aktualisieren des Termins');
+        setLoading(false);
+        return;
+      }
+      loadAppointments();
+      if (status === "accepted") {
+        alert("Termin angenommen! Sie finden ihn jetzt unter 'Meine Fahrten'.");
+      } else {
+        alert("Termin abgelehnt.");
+      }
+    } catch (e) {
+      setError('Fehler beim Aktualisieren des Termins');
+    } finally {
+      setLoading(false);
     }
   };
 

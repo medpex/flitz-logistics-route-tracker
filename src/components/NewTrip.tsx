@@ -29,7 +29,7 @@ export const NewTrip = ({ user }: NewTripProps) => {
     setTripData({ ...tripData, isStarted: true });
   };
 
-  const handleEndTrip = () => {
+  const handleEndTrip = async () => {
     if (!tripData.endKm || !tripData.endLocation) {
       alert("Bitte füllen Sie alle Felder aus");
       return;
@@ -43,39 +43,47 @@ export const NewTrip = ({ user }: NewTripProps) => {
       return;
     }
 
-    // Fahrt in localStorage speichern
+    // Fahrt per API speichern
     const trip = {
-      id: Math.random().toString(36).substr(2, 9),
       driverId: user.id,
       driverName: user.name,
       date: new Date().toISOString(),
       startKm: startKm,
       endKm: endKm,
-      distance: endKm - startKm,
+      totalDistance: endKm - startKm,
       startLocation: tripData.startLocation,
       endLocation: tripData.endLocation,
-      purpose: tripData.purpose
+      purpose: tripData.purpose,
+      status: 'completed',
     };
 
-    const existingTrips = JSON.parse(localStorage.getItem('trips') || '[]');
-    const updatedTrips = [...existingTrips, trip];
-    localStorage.setItem('trips', JSON.stringify(updatedTrips));
-
-    setTripData({ ...tripData, isCompleted: true });
-    alert("Fahrt erfolgreich beendet und gespeichert!");
-    
-    // Reset form
-    setTimeout(() => {
-      setTripData({
-        startKm: "",
-        endKm: "",
-        startLocation: "",
-        endLocation: "",
-        purpose: "",
-        isStarted: false,
-        isCompleted: false
+    try {
+      const res = await fetch('/api/trips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trip),
       });
-    }, 2000);
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Fehler beim Speichern der Fahrt');
+        return;
+      }
+      setTripData({ ...tripData, isCompleted: true });
+      alert("Fahrt erfolgreich beendet und gespeichert!");
+      setTimeout(() => {
+        setTripData({
+          startKm: "",
+          endKm: "",
+          startLocation: "",
+          endLocation: "",
+          purpose: "",
+          isStarted: false,
+          isCompleted: false
+        });
+      }, 2000);
+    } catch (e) {
+      alert('Fehler beim Speichern der Fahrt');
+    }
   };
 
   const handleReset = () => {

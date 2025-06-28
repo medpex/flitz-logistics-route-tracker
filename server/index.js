@@ -95,6 +95,111 @@ app.get('/api/drivers', async (req, res) => {
   }
 });
 
+// Neue Trip-API
+app.post('/api/trips', async (req, res) => {
+  try {
+    const { driverId, driverName, date, time, startLocation, stations, endLocation, purpose, status, startKm, startTime, endKm, endTime, totalDistance, appointmentId } = req.body;
+    if (!driverId || !driverName || !date || !startLocation || !endLocation || !purpose) {
+      return res.status(400).json({ error: 'Pflichtfelder fehlen' });
+    }
+    const trip = await prisma.trip.create({
+      data: {
+        driverId,
+        driverName,
+        date: new Date(date),
+        time,
+        startLocation,
+        stations: stations || [],
+        endLocation,
+        purpose,
+        status: status || 'completed',
+        startKm: startKm ? Number(startKm) : null,
+        startTime: startTime || null,
+        endKm: endKm ? Number(endKm) : null,
+        endTime: endTime || null,
+        totalDistance: totalDistance ? Number(totalDistance) : null,
+        appointmentId: appointmentId || null,
+        createdAt: new Date(),
+      },
+    });
+    res.json(trip);
+  } catch (err) {
+    console.error('Trip-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Anlegen der Fahrt' });
+  }
+});
+
+app.get('/api/trips', async (req, res) => {
+  try {
+    const { driverId } = req.query;
+    const where = driverId ? { driverId: String(driverId) } : {};
+    const trips = await prisma.trip.findMany({ where, orderBy: { date: 'desc' } });
+    res.json(trips);
+  } catch (err) {
+    console.error('Trip-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Laden der Fahrten' });
+  }
+});
+
+// Neue Appointment-API
+app.post('/api/appointments', async (req, res) => {
+  try {
+    const { driverId, driverName, date, time, startLocation, stations, endLocation, purpose, status } = req.body;
+    if (!driverId || !driverName || !date || !startLocation || !endLocation || !purpose) {
+      return res.status(400).json({ error: 'Pflichtfelder fehlen' });
+    }
+    const appointment = await prisma.appointment.create({
+      data: {
+        driverId,
+        driverName,
+        date: new Date(date),
+        time,
+        startLocation,
+        stations: stations || [],
+        endLocation,
+        purpose,
+        status: status || 'pending',
+        createdAt: new Date(),
+      },
+    });
+    res.json(appointment);
+  } catch (err) {
+    console.error('Appointment-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Anlegen des Termins' });
+  }
+});
+
+app.get('/api/appointments', async (req, res) => {
+  try {
+    const { driverId } = req.query;
+    const where = driverId ? { driverId: String(driverId) } : {};
+    const appointments = await prisma.appointment.findMany({ where, orderBy: { date: 'desc' } });
+    res.json(appointments);
+  } catch (err) {
+    console.error('Appointment-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Laden der Termine' });
+  }
+});
+
+// PATCH Appointment-Status
+app.patch('/api/appointments/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const { id } = req.params;
+    if (!status || !['accepted', 'declined'].includes(status)) {
+      return res.status(400).json({ error: 'Ungültiger Status' });
+    }
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: { status },
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error('Appointment-Update-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Aktualisieren des Termins' });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend listening on port ${PORT}`);
