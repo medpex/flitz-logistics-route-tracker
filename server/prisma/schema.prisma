@@ -19,7 +19,6 @@ model User {
   name      String
   email     String   @unique
   password  String
-  role      String   // "driver" | "admin"
   createdAt DateTime @default(now())
 }
 
@@ -27,7 +26,6 @@ model Driver {
   id             String   @id @default(uuid())
   name           String
   employeeNumber String   @unique
-  email          String?
   status         String   // "active" | "inactive"
   createdAt      DateTime @default(now())
   trips          Trip[]
