@@ -193,9 +193,17 @@ export const MyTrips = ({ user }: MyTripsProps) => {
   const completedTrips = trips.filter(trip => trip.status === "completed");
 
   const getNextIncompleteStation = (trip: Trip) => {
-    if (!trip.stationEntries) return null;
+    if (!trip.stationEntries || trip.stationEntries.length === 0) return null;
+    
+    // Find the first station that is not completed
     const index = trip.stationEntries.findIndex(entry => !entry.completed);
-    return index >= 0 ? { index, station: trip.stationEntries[index] } : null;
+    
+    if (index === -1) return null; // All stations completed
+    
+    return { 
+      index, 
+      station: trip.stationEntries[index] 
+    };
   };
 
   return (
@@ -221,7 +229,6 @@ export const MyTrips = ({ user }: MyTripsProps) => {
                     <div><strong>Datum:</strong> {new Date(trip.date).toLocaleDateString('de-DE')} um {trip.time}</div>
                     <div><strong>Start:</strong> {trip.startLocation}</div>
                     <div><strong>Start-KM:</strong> {trip.startKm?.toLocaleString()} um {trip.startTime}</div>
-                    <div><strong>Zweck:</strong> {trip.purpose}</div>
                   </div>
 
                   {/* Stationen Status */}
@@ -306,7 +313,7 @@ export const MyTrips = ({ user }: MyTripsProps) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-gray-500" />
-                    <span>{trip.startLocation} → {trip.endLocation}</span>
+                    <span>{trip.startLocation}</span>
                   </div>
                 </div>
 
@@ -323,11 +330,6 @@ export const MyTrips = ({ user }: MyTripsProps) => {
                     </div>
                   </div>
                 )}
-
-                <div>
-                  <span className="font-medium">Zweck:</span>
-                  <p className="text-sm text-gray-600 mt-1">{trip.purpose}</p>
-                </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -379,7 +381,7 @@ export const MyTrips = ({ user }: MyTripsProps) => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">
-                    {trip.startLocation} → {trip.endLocation}
+                    {trip.startLocation}
                   </CardTitle>
                   <Badge variant="secondary">{new Date(trip.date).toLocaleDateString('de-DE')}</Badge>
                 </div>
@@ -413,11 +415,6 @@ export const MyTrips = ({ user }: MyTripsProps) => {
                     </div>
                   </div>
                 )}
-
-                <div>
-                  <span className="font-medium">Zweck:</span>
-                  <p className="text-sm text-gray-600 mt-1">{trip.purpose}</p>
-                </div>
               </CardContent>
             </Card>
           ))
