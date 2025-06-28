@@ -57,6 +57,44 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Neue Fahrer-API
+app.post('/api/drivers', async (req, res) => {
+  try {
+    const { name, employeeNumber, email } = req.body;
+    if (!name || !employeeNumber) {
+      return res.status(400).json({ error: 'Name und Personalnummer erforderlich' });
+    }
+    // Prüfen ob Personalnummer schon existiert
+    const exists = await prisma.driver.findUnique({ where: { employeeNumber } });
+    if (exists) {
+      return res.status(409).json({ error: 'Personalnummer existiert bereits' });
+    }
+    const driver = await prisma.driver.create({
+      data: {
+        name,
+        employeeNumber,
+        status: 'active',
+        createdAt: new Date(),
+      },
+    });
+    res.json(driver);
+  } catch (err) {
+    console.error('Fahrer-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Anlegen des Fahrers' });
+  }
+});
+
+// Fahrer-Liste
+app.get('/api/drivers', async (req, res) => {
+  try {
+    const drivers = await prisma.driver.findMany({ orderBy: { createdAt: 'desc' } });
+    res.json(drivers);
+  } catch (err) {
+    console.error('Fahrer-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Laden der Fahrer' });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend listening on port ${PORT}`);

@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LoginForm } from "@/components/LoginForm";
 import { DriverDashboard } from "@/components/DriverDashboard";
 import { AdminDashboard } from "@/components/AdminDashboard";
@@ -26,8 +25,26 @@ export interface User {
 export type ViewType = "overview" | "my-trips" | "dashboard" | "all-trips" | "reports" | "drivers" | "appointments";
 
 const Index = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<ViewType>("overview");
+  const [user, setUser] = useState<User | null>(() => {
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
+  });
+  const [currentView, setCurrentView] = useState<ViewType>(() => {
+    const stored = localStorage.getItem("currentView");
+    return stored ? (stored as ViewType) : "overview";
+  });
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("user");
+    }
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem("currentView", currentView);
+  }, [currentView]);
 
   const handleLogin = (userData: User) => {
     setUser(userData);
@@ -37,6 +54,8 @@ const Index = () => {
   const handleLogout = () => {
     setUser(null);
     setCurrentView("overview");
+    localStorage.removeItem("user");
+    localStorage.removeItem("currentView");
   };
 
   const handleViewChange = (view: ViewType) => {

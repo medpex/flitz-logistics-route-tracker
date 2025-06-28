@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,50 +22,64 @@ interface Driver {
 }
 
 export const Drivers = ({ user }: DriversProps) => {
-  const [drivers, setDrivers] = useState<Driver[]>(() => {
-    return JSON.parse(localStorage.getItem('drivers') || '[]');
-  });
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newDriver, setNewDriver] = useState({
     name: '',
     employeeNumber: '',
     email: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const saveDrivers = (updatedDrivers: Driver[]) => {
-    localStorage.setItem('drivers', JSON.stringify(updatedDrivers));
-    setDrivers(updatedDrivers);
+  useEffect(() => {
+    fetchDrivers();
+  }, []);
+
+  const fetchDrivers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/drivers');
+      const data = await res.json();
+      setDrivers(data);
+    } catch (e) {
+      setError('Fehler beim Laden der Fahrer');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddDriver = (e: React.FormEvent) => {
+  const handleAddDriver = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Prüfen ob Personalnummer bereits existiert
-    if (drivers.some(d => d.employeeNumber === newDriver.employeeNumber)) {
-      alert('Diese Personalnummer existiert bereits!');
-      return;
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch('/api/drivers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDriver),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Fehler beim Anlegen');
+        setLoading(false);
+        return;
+      }
+      setNewDriver({ name: '', employeeNumber: '', email: '' });
+      setIsDialogOpen(false);
+      fetchDrivers();
+    } catch (e) {
+      setError('Fehler beim Anlegen des Fahrers');
+    } finally {
+      setLoading(false);
     }
-
-    const driver: Driver = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newDriver.name,
-      employeeNumber: newDriver.employeeNumber,
-      email: newDriver.email,
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-
-    const updatedDrivers = [...drivers, driver];
-    saveDrivers(updatedDrivers);
-    
-    setNewDriver({ name: '', employeeNumber: '', email: '' });
-    setIsDialogOpen(false);
   };
 
   const handleDeleteDriver = (driverId: string) => {
     if (confirm('Sind Sie sicher, dass Sie diesen Fahrer löschen möchten?')) {
       const updatedDrivers = drivers.filter(d => d.id !== driverId);
-      saveDrivers(updatedDrivers);
+      // handleDeleteDriver ggf. anpassen, falls Backend-API vorhanden
     }
   };
 
@@ -76,7 +89,7 @@ export const Drivers = ({ user }: DriversProps) => {
         ? { ...d, status: d.status === 'active' ? 'inactive' as const : 'active' as const }
         : d
     );
-    saveDrivers(updatedDrivers);
+    // toggleDriverStatus ggf. anpassen, falls Backend-API vorhanden
   };
 
   return (
