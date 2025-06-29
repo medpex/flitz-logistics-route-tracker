@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('./generated/prisma');
 const bcrypt = require('bcrypt');
+const { Parser } = require('json2csv');
+const PDFDocument = require('pdfkit');
+const stream = require('stream');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -98,9 +101,12 @@ app.get('/api/drivers', async (req, res) => {
 // Neue Trip-API
 app.post('/api/trips', async (req, res) => {
   try {
-    const { driverId, driverName, date, time, startLocation, stations, endLocation, purpose, status, startKm, startTime, endKm, endTime, totalDistance, appointmentId } = req.body;
-    if (!driverId || !driverName || !date || !startLocation || !endLocation || !purpose) {
-      return res.status(400).json({ error: 'Pflichtfelder fehlen' });
+    const { driverId, driverName, date, time, startLocation, stations, endLocation, purpose, status, startKm, startTime, endKm, endTime, totalDistance, appointmentId, businessPartner, detourReason, changedBy } = req.body;
+    if (!driverId || !driverName || !date || !startLocation || !endLocation || !purpose || !businessPartner) {
+      return res.status(400).json({ error: 'Pflichtfelder fehlen (inkl. Geschäftspartner)' });
+    }
+    if (detourReason !== undefined && detourReason !== null && detourReason.trim() === "") {
+      return res.status(400).json({ error: 'Umweg-Begründung muss angegeben werden, wenn Umweg gewählt wurde.' });
     }
     const trip = await prisma.trip.create({
       data: {
@@ -120,7 +126,34 @@ app.post('/api/trips', async (req, res) => {
         totalDistance: totalDistance ? Number(totalDistance) : null,
         appointmentId: appointmentId || null,
         createdAt: new Date(),
+        businessPartner,
+        detourReason: detourReason || null
       },
+    });
+    // Audit-Log anlegen
+    await prisma.tripLog.create({
+      data: {
+        tripId: trip.id,
+        driverId: trip.driverId,
+        driverName: trip.driverName,
+        date: trip.date,
+        time: trip.time,
+        startLocation: trip.startLocation,
+        stations: trip.stations,
+        endLocation: trip.endLocation,
+        purpose: trip.purpose,
+        businessPartner: trip.businessPartner,
+        detourReason: trip.detourReason,
+        status: trip.status,
+        appointmentId: trip.appointmentId,
+        startKm: trip.startKm,
+        startTime: trip.startTime,
+        endKm: trip.endKm,
+        endTime: trip.endTime,
+        totalDistance: trip.totalDistance,
+        changedBy: changedBy || trip.driverId,
+        changeType: 'create',
+      }
     });
     res.json(trip);
   } catch (err) {
@@ -141,9 +174,128 @@ app.get('/api/trips', async (req, res) => {
   }
 });
 
+// PATCH Trip (Änderung nur wenn nicht completed und innerhalb von 7 Tagen, Audit-Trail)
+app.patch('/api/trips/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    // Aktuelle Fahrt laden
+    const trip = await prisma.trip.findUnique({ where: { id } });
+    if (!trip) {
+      return res.status(404).json({ error: 'Fahrt nicht gefunden' });
+    }
+    if (trip.status === 'completed') {
+      return res.status(403).json({ error: 'Abgeschlossene Fahrten können nicht mehr geändert werden.' });
+    }
+    // Fristenkontrolle: Änderung nur bis 7 Tage nach Fahrtende
+    const now = new Date();
+    const endDate = trip.endTime ? new Date(trip.date.toISOString().split('T')[0] + 'T' + trip.endTime) : trip.date;
+    const diffDays = Math.floor((now - endDate) / (1000 * 60 * 60 * 24));
+    if (diffDays > 7) {
+      return res.status(403).json({ error: 'Fahrten können nur bis spätestens 7 Tage nach Fahrtende geändert werden.' });
+    }
+    // Pflichtfelder prüfen
+    if (!updateData.businessPartner) {
+      return res.status(400).json({ error: 'Geschäftspartner ist Pflichtfeld.' });
+    }
+    if (updateData.detourReason !== undefined && updateData.detourReason !== null && updateData.detourReason.trim() === "") {
+      return res.status(400).json({ error: 'Umweg-Begründung muss angegeben werden, wenn Umweg gewählt wurde.' });
+    }
+    // Alten Stand als Log speichern
+    await prisma.tripLog.create({
+      data: {
+        tripId: trip.id,
+        driverId: trip.driverId,
+        driverName: trip.driverName,
+        date: trip.date,
+        time: trip.time,
+        startLocation: trip.startLocation,
+        stations: trip.stations,
+        endLocation: trip.endLocation,
+        purpose: trip.purpose,
+        businessPartner: trip.businessPartner,
+        detourReason: trip.detourReason,
+        status: trip.status,
+        appointmentId: trip.appointmentId,
+        startKm: trip.startKm,
+        startTime: trip.startTime,
+        endKm: trip.endKm,
+        endTime: trip.endTime,
+        totalDistance: trip.totalDistance,
+        changedBy: updateData.changedBy || trip.driverId,
+        changeType: 'update',
+      }
+    });
+    // Änderung durchführen
+    const updated = await prisma.trip.update({
+      where: { id },
+      data: updateData
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error('Trip-Update-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Ändern der Fahrt' });
+  }
+});
+
+// DELETE Trip (nur wenn nicht completed und innerhalb von 7 Tagen, Audit-Trail)
+app.delete('/api/trips/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { changedBy } = req.body;
+    // Aktuelle Fahrt laden
+    const trip = await prisma.trip.findUnique({ where: { id } });
+    if (!trip) {
+      return res.status(404).json({ error: 'Fahrt nicht gefunden' });
+    }
+    if (trip.status === 'completed') {
+      return res.status(403).json({ error: 'Abgeschlossene Fahrten können nicht gelöscht werden.' });
+    }
+    // Fristenkontrolle: Löschung nur bis 7 Tage nach Fahrtende
+    const now = new Date();
+    const endDate = trip.endTime ? new Date(trip.date.toISOString().split('T')[0] + 'T' + trip.endTime) : trip.date;
+    const diffDays = Math.floor((now - endDate) / (1000 * 60 * 60 * 24));
+    if (diffDays > 7) {
+      return res.status(403).json({ error: 'Fahrten können nur bis spätestens 7 Tage nach Fahrtende gelöscht werden.' });
+    }
+    // Alten Stand als Log speichern
+    await prisma.tripLog.create({
+      data: {
+        tripId: trip.id,
+        driverId: trip.driverId,
+        driverName: trip.driverName,
+        date: trip.date,
+        time: trip.time,
+        startLocation: trip.startLocation,
+        stations: trip.stations,
+        endLocation: trip.endLocation,
+        purpose: trip.purpose,
+        businessPartner: trip.businessPartner,
+        detourReason: trip.detourReason,
+        status: trip.status,
+        appointmentId: trip.appointmentId,
+        startKm: trip.startKm,
+        startTime: trip.startTime,
+        endKm: trip.endKm,
+        endTime: trip.endTime,
+        totalDistance: trip.totalDistance,
+        changedBy: changedBy || trip.driverId,
+        changeType: 'delete',
+      }
+    });
+    // Fahrt löschen
+    await prisma.trip.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Trip-Delete-Fehler:', err);
+    res.status(500).json({ error: 'Serverfehler beim Löschen der Fahrt' });
+  }
+});
+
 // Neue Appointment-API
 app.post('/api/appointments', async (req, res) => {
   try {
+    console.log('POST /api/appointments body:', req.body);
     const { driverId, driverName, date, time, startLocation, stations, endLocation, purpose, status } = req.body;
     if (!driverId || !driverName || !date || !startLocation || !endLocation || !purpose) {
       return res.status(400).json({ error: 'Pflichtfelder fehlen' });
@@ -209,6 +361,94 @@ app.delete('/api/appointments/:id', async (req, res) => {
   } catch (err) {
     console.error('Appointment-Delete-Fehler:', err);
     res.status(500).json({ error: 'Serverfehler beim Löschen des Termins' });
+  }
+});
+
+// CSV-Export aller Fahrten (inkl. Audit-Trail)
+app.get('/api/trips/export/csv', async (req, res) => {
+  try {
+    const { driverId, from, to } = req.query;
+    const where = {};
+    if (driverId) where.driverId = driverId;
+    if (from || to) {
+      where.date = {};
+      if (from) where.date.gte = new Date(from);
+      if (to) where.date.lte = new Date(to);
+    }
+    // Alle Fahrten laden
+    const trips = await prisma.trip.findMany({
+      where,
+      orderBy: { date: 'asc' },
+      include: { logs: true }
+    });
+    // CSV-Felder
+    const fields = [
+      'id', 'driverName', 'date', 'time', 'startLocation', 'endLocation', 'purpose', 'businessPartner', 'detourReason',
+      'startKm', 'endKm', 'totalDistance', 'startTime', 'endTime', 'status',
+      'createdAt'
+    ];
+    // Audit-Trail als separate Spalte
+    const auditFields = ['logs'];
+    const data = trips.map(trip => ({
+      ...trip,
+      date: trip.date.toISOString().split('T')[0],
+      createdAt: trip.createdAt.toISOString(),
+      logs: trip.logs.map(log => `${log.changeType} (${log.changedBy} @ ${log.createdAt.toISOString()})`).join('; ')
+    }));
+    const parser = new Parser({ fields: [...fields, ...auditFields] });
+    const csv = parser.parse(data);
+    res.header('Content-Type', 'text/csv');
+    res.attachment('fahrtenbuch.csv');
+    res.send(csv);
+  } catch (err) {
+    console.error('CSV-Export-Fehler:', err);
+    res.status(500).json({ error: 'Fehler beim CSV-Export' });
+  }
+});
+
+// PDF-Export aller Fahrten (inkl. Audit-Trail)
+app.get('/api/trips/export/pdf', async (req, res) => {
+  try {
+    const { driverId, from, to } = req.query;
+    const where = {};
+    if (driverId) where.driverId = driverId;
+    if (from || to) {
+      where.date = {};
+      if (from) where.date.gte = new Date(from);
+      if (to) where.date.lte = new Date(to);
+    }
+    const trips = await prisma.trip.findMany({
+      where,
+      orderBy: { date: 'asc' },
+      include: { logs: true }
+    });
+    const doc = new PDFDocument({ margin: 30, size: 'A4' });
+    const pass = new stream.PassThrough();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=fahrtenbuch.pdf');
+    doc.pipe(pass);
+    doc.fontSize(18).text('Fahrtenbuch Export', { align: 'center' });
+    doc.moveDown();
+    trips.forEach((trip, idx) => {
+      doc.fontSize(12).text(`Fahrt #${idx + 1}`);
+      doc.text(`Datum: ${trip.date.toISOString().split('T')[0]}`);
+      doc.text(`Fahrer: ${trip.driverName}`);
+      doc.text(`Start: ${trip.startLocation} (${trip.startKm} km) um ${trip.startTime}`);
+      doc.text(`Ziel: ${trip.endLocation} (${trip.endKm} km) um ${trip.endTime}`);
+      doc.text(`Zweck: ${trip.purpose}`);
+      doc.text(`Geschäftspartner: ${trip.businessPartner}`);
+      if (trip.detourReason) doc.text(`Umweg/Begründung: ${trip.detourReason}`);
+      doc.text(`Status: ${trip.status}`);
+      doc.text(`Erstellt am: ${trip.createdAt.toISOString()}`);
+      doc.text(`Audit-Trail: ${trip.logs.map(log => `${log.changeType} (${log.changedBy} @ ${log.createdAt.toISOString()})`).join('; ')}`);
+      doc.moveDown();
+      doc.moveDown();
+    });
+    doc.end();
+    pass.pipe(res);
+  } catch (err) {
+    console.error('PDF-Export-Fehler:', err);
+    res.status(500).json({ error: 'Fehler beim PDF-Export' });
   }
 });
 

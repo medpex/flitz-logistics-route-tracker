@@ -82,8 +82,8 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAppointment.driverId || !newAppointment.date || !newAppointment.time) {
-      alert("Bitte füllen Sie alle Pflichtfelder aus");
+    if (!newAppointment.driverId || !newAppointment.date || !newAppointment.time || !newAppointment.endLocation || !newAppointment.purpose) {
+      alert("Bitte füllen Sie alle Pflichtfelder aus (inkl. Endort und Zweck)");
       return;
     }
     const selectedDriver = drivers.find(d => d.id === newAppointment.driverId);
@@ -255,6 +255,28 @@ export const AdminAppointments = ({ user }: AdminAppointmentsProps) => {
                     })}
                   </div>
                 )}
+              </div>
+
+              <div>
+                <Label htmlFor="endLocation">Endort *</Label>
+                <Input
+                  id="endLocation"
+                  value={newAppointment.endLocation}
+                  onChange={(e) => setNewAppointment({...newAppointment, endLocation: e.target.value})}
+                  placeholder="z.B. Zielort Berlin"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="purpose">Zweck *</Label>
+                <Input
+                  id="purpose"
+                  value={newAppointment.purpose}
+                  onChange={(e) => setNewAppointment({...newAppointment, purpose: e.target.value})}
+                  placeholder="z.B. Lieferung, Abholung, etc."
+                  required
+                />
               </div>
 
               <div className="flex gap-2">

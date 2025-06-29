@@ -1,11 +1,11 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { User } from "@/pages/Index";
 import { 
   BarChart3, 
   Users, 
   Car, 
-  TrendingUp
+  TrendingUp,
+  Download
 } from "lucide-react";
 
 interface AdminDashboardProps {
@@ -21,10 +21,25 @@ export const AdminDashboard = ({ user }: AdminDashboardProps) => {
   const totalKm = trips.reduce((sum: number, trip: any) => sum + (trip.distance || 0), 0);
   const totalDrivers = drivers.length;
 
+  const handleExport = (type: 'csv' | 'pdf') => {
+    const url = `/api/trips/export/${type}`;
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+      </div>
+
+      {/* Export Buttons */}
+      <div className="flex gap-2 justify-end">
+        <button onClick={() => handleExport('csv')} className="flex items-center gap-2 border px-3 py-2 rounded hover:bg-gray-100">
+          <Download className="h-4 w-4" /> CSV Export
+        </button>
+        <button onClick={() => handleExport('pdf')} className="flex items-center gap-2 border px-3 py-2 rounded hover:bg-gray-100">
+          <Download className="h-4 w-4" /> PDF Export
+        </button>
       </div>
 
       {/* Statistics Cards */}

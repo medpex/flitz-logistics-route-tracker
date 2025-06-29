@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { User, Plus, Trash2 } from "lucide-react";
 import { User as UserType } from "@/pages/Index";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 
 interface DriversProps {
   user: UserType;
@@ -31,6 +32,7 @@ export const Drivers = ({ user }: DriversProps) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDrivers();
@@ -77,10 +79,8 @@ export const Drivers = ({ user }: DriversProps) => {
   };
 
   const handleDeleteDriver = (driverId: string) => {
-    if (confirm('Sind Sie sicher, dass Sie diesen Fahrer löschen möchten?')) {
-      const updatedDrivers = drivers.filter(d => d.id !== driverId);
-      // handleDeleteDriver ggf. anpassen, falls Backend-API vorhanden
-    }
+    setDrivers(drivers.filter(d => d.id !== driverId));
+    setDeleteDialogOpen(null);
   };
 
   const toggleDriverStatus = (driverId: string) => {
@@ -181,10 +181,26 @@ export const Drivers = ({ user }: DriversProps) => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDeleteDriver(driver.id)}
+                      asChild
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <AlertDialogTrigger asChild>
+                        <span className="flex items-center"><Trash2 className="h-4 w-4" /></span>
+                      </AlertDialogTrigger>
                     </Button>
+                    <AlertDialog open={deleteDialogOpen === driver.id} onOpenChange={open => setDeleteDialogOpen(open ? driver.id : null)}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Fahrer wirklich löschen?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Diese Aktion kann nicht rückgängig gemacht werden. Der Fahrer wird dauerhaft entfernt.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteDriver(driver.id)} autoFocus>Löschen</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </CardHeader>

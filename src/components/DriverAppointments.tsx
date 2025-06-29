@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { User } from "@/pages/Index";
 import { Calendar, MapPin, Check, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface DriverAppointmentsProps {
   user: User;
@@ -26,6 +27,7 @@ export const DriverAppointments = ({ user }: DriverAppointmentsProps) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     loadAppointments();
@@ -61,11 +63,13 @@ export const DriverAppointments = ({ user }: DriverAppointmentsProps) => {
         return;
       }
       loadAppointments();
-      if (status === "accepted") {
-        alert("Termin angenommen! Sie finden ihn jetzt unter 'Meine Fahrten'.");
-      } else {
-        alert("Termin abgelehnt.");
-      }
+      toast({
+        title: status === "accepted" ? "Termin angenommen" : "Termin abgelehnt",
+        description: status === "accepted"
+          ? "Sie finden ihn jetzt unter 'Meine Fahrten'."
+          : "Der Termin wurde abgelehnt.",
+        status: status === "accepted" ? "success" : "warning",
+      });
     } catch (e) {
       setError('Fehler beim Aktualisieren des Termins');
     } finally {

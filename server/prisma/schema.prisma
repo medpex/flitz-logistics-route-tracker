@@ -53,6 +53,9 @@ model Trip {
   endTime       String?
   totalDistance Int?
   createdAt     DateTime @default(now())
+  businessPartner String
+  detourReason    String?
+  logs            TripLog[]
 }
 
 model Appointment {
@@ -69,4 +72,30 @@ model Appointment {
   status        String   // "pending" | "accepted" | "declined"
   createdAt     DateTime @default(now())
   trips         Trip[]
+}
+
+model TripLog {
+  id            String   @id @default(uuid())
+  tripId        String
+  driverId      String
+  driverName    String
+  date          DateTime
+  time          String
+  startLocation String
+  stations      String[]
+  endLocation   String
+  purpose       String
+  businessPartner String
+  detourReason  String?
+  status        String
+  appointmentId String?
+  startKm       Int?
+  startTime     String?
+  endKm         Int?
+  endTime       String?
+  totalDistance Int?
+  createdAt     DateTime @default(now())
+  changedBy     String
+  changeType    String   // 'create' | 'update' | 'delete'
+  Trip          Trip     @relation(fields: [tripId], references: [id])
 }
