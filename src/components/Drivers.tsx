@@ -32,7 +32,6 @@ export const Drivers = ({ user }: DriversProps) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDrivers();
@@ -80,7 +79,6 @@ export const Drivers = ({ user }: DriversProps) => {
 
   const handleDeleteDriver = (driverId: string) => {
     setDrivers(drivers.filter(d => d.id !== driverId));
-    setDeleteDialogOpen(null);
   };
 
   const toggleDriverStatus = (driverId: string) => {
@@ -178,16 +176,12 @@ export const Drivers = ({ user }: DriversProps) => {
                     >
                       {driver.status === "active" ? "Deaktivieren" : "Aktivieren"}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                    >
+                    <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <span className="flex items-center"><Trash2 className="h-4 w-4" /></span>
+                        <Button variant="outline" size="sm">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </AlertDialogTrigger>
-                    </Button>
-                    <AlertDialog open={deleteDialogOpen === driver.id} onOpenChange={open => setDeleteDialogOpen(open ? driver.id : null)}>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Fahrer wirklich löschen?</AlertDialogTitle>

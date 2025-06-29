@@ -7,14 +7,21 @@ import {
   TrendingUp,
   Download
 } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface AdminDashboardProps {
   user: User;
 }
 
 export const AdminDashboard = ({ user }: AdminDashboardProps) => {
-  // Fahrer aus localStorage laden
-  const drivers = JSON.parse(localStorage.getItem('drivers') || '[]');
+  const [drivers, setDrivers] = useState<any[]>([]);
+  useEffect(() => {
+    fetch('/api/drivers')
+      .then(res => res.json())
+      .then(setDrivers)
+      .catch(() => setDrivers([]));
+  }, []);
+
   const trips = JSON.parse(localStorage.getItem('trips') || '[]');
 
   const totalTrips = trips.length;
