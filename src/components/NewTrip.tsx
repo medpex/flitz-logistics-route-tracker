@@ -11,12 +11,18 @@ interface NewTripProps {
   user: User;
 }
 
+// Neue Typen für Route-Checkpoints
+interface RouteCheckpoint {
+  location: string;
+  km: string;
+  time: string;
+}
+
 export const NewTrip = ({ user }: NewTripProps) => {
   const [tripData, setTripData] = useState({
-    startKm: "",
-    endKm: "",
-    startLocation: "",
-    endLocation: "",
+    checkpoints: [
+      // { location: string, km: string, time: string }
+    ],
     purpose: "",
     isStarted: false,
     isCompleted: false,
@@ -43,20 +49,11 @@ export const NewTrip = ({ user }: NewTripProps) => {
       return JSON.parse(localStorage.getItem('purposeFavorites') || '[]');
     } catch { return []; }
   });
-  const saveFavorite = (type: 'partner' | 'purpose', value: string) => {
-    if (!value.trim()) return;
-    if (type === 'partner') {
-      const favs = [value, ...partnerFavorites.filter(f => f !== value)].slice(0, 5);
-      setPartnerFavorites(favs);
-      localStorage.setItem('partnerFavorites', JSON.stringify(favs));
-    } else {
-      const favs = [value, ...purposeFavorites.filter(f => f !== value)].slice(0, 5);
-      setPurposeFavorites(favs);
-      localStorage.setItem('purposeFavorites', JSON.stringify(favs));
-    }
-  };
+  const [newCheckpoint, setNewCheckpoint] = useState({ location: "", km: "" });
   const partnerInputRef = useRef<HTMLInputElement>(null);
   const purposeInputRef = useRef<HTMLTextAreaElement>(null);
+  const [route, setRoute] = useState<RouteCheckpoint[]>([]);
+  const [inputValues, setInputValues] = useState<{ km: string; time: string }[]>([]);
 
   useEffect(() => {
     if (showAppointmentSelect) {
@@ -81,16 +78,49 @@ export const NewTrip = ({ user }: NewTripProps) => {
     const apt = appointments.find(a => a.id === aptId);
     if (!apt) return;
     setSelectedAppointmentId(aptId);
+    // Route aus Termin: Start, optionale Zwischenhalte, Ziel
+    // Annahme: apt.route = [{ location: string }] (falls vorhanden), sonst nur Start/Ziel
+    let checkpoints: RouteCheckpoint[] = [];
+    if (Array.isArray(apt.route) && apt.route.length > 0) {
+      checkpoints = apt.route.map((r: any) => ({ location: r.location, km: "", time: "" }));
+    } else {
+      checkpoints = [
+        { location: apt.startLocation || "", km: "", time: "" },
+        { location: apt.endLocation || "", km: "", time: "" }
+      ];
+    }
+    setRoute(checkpoints);
+    setInputValues(checkpoints.map(() => ({ km: "", time: "" })));
     setTripData({
       ...tripData,
-      startLocation: apt.startLocation || "",
-      endLocation: apt.endLocation || "",
       purpose: apt.purpose || "",
       isStarted: true,
       startTime: apt.time || "",
       endTime: ""
     });
     setShowAppointmentSelect(false);
+  };
+
+  const handleInputChange = (idx: number, field: 'km' | 'time', value: string) => {
+    setInputValues(prev => prev.map((v, i) => i === idx ? { ...v, [field]: value } : v));
+  };
+
+  const handleAddCheckpoint = () => {
+    if (!newCheckpoint.location.trim() || !newCheckpoint.km.trim()) return;
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setTripData(prev => ({
+      ...prev,
+      checkpoints: [...prev.checkpoints, { ...newCheckpoint, time }]
+    }));
+    setNewCheckpoint({ location: "", km: "" });
+  };
+
+  const handleRemoveCheckpoint = (idx: number) => {
+    setTripData(prev => ({
+      ...prev,
+      checkpoints: prev.checkpoints.filter((_, i) => i !== idx)
+    }));
   };
 
   const handleStartTrip = () => {
@@ -100,30 +130,34 @@ export const NewTrip = ({ user }: NewTripProps) => {
       ...tripData,
       isStarted: true,
       startTime,
-      endTime: ""
+      checkpoints: tripData.checkpoints.length === 0 ? [] : tripData.checkpoints,
     });
     setShowAppointmentSelect(false);
   };
 
   const handleEndTrip = async () => {
     setError("");
-    if (!tripData.endKm || !tripData.endLocation || !tripData.businessPartner) {
-      setError("Bitte alle Pflichtfelder ausfüllen (inkl. Geschäftspartner).");
+    // Validierung: alle km und time müssen ausgefüllt sein
+    if (inputValues.some(v => !v.km.trim() || !v.time.trim())) {
+      setError("Bitte für alle Punkte Kilometerstand und Uhrzeit eintragen.");
+      return;
+    }
+    if (!tripData.businessPartner) {
+      setError("Bitte Geschäftspartner angeben.");
       return;
     }
     if (tripData.detour && !tripData.detourReason.trim()) {
       setError("Bitte geben Sie eine Begründung für den Umweg an.");
       return;
     }
-    const startKm = parseInt(tripData.startKm);
-    const endKm = parseInt(tripData.endKm);
+    const startKm = parseInt(inputValues[0].km);
+    const endKm = parseInt(inputValues[inputValues.length - 1].km);
     if (endKm <= startKm) {
       setError("End-Kilometerstand muss höher als Start-Kilometerstand sein");
       return;
     }
     const now = new Date();
-    const endTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    // Fahrt per API speichern
+    const endTime = inputValues[inputValues.length - 1].time;
     const trip = {
       driverId: user.id,
       driverName: user.name,
@@ -131,16 +165,16 @@ export const NewTrip = ({ user }: NewTripProps) => {
       startKm: startKm,
       endKm: endKm,
       totalDistance: endKm - startKm,
-      startLocation: tripData.startLocation,
-      endLocation: tripData.endLocation,
+      startLocation: route[0].location,
+      endLocation: route[route.length - 1].location,
       purpose: tripData.purpose,
       status: 'completed',
-      startTime: tripData.startTime,
+      startTime: inputValues[0].time,
       endTime: endTime,
       businessPartner: tripData.businessPartner,
-      detourReason: tripData.detour ? tripData.detourReason : null
+      detourReason: tripData.detour ? tripData.detourReason : null,
+      checkpoints: route.map((r, i) => ({ location: r.location, km: inputValues[i].km, time: inputValues[i].time }))
     };
-
     try {
       const res = await fetch('/api/trips', {
         method: 'POST',
@@ -156,10 +190,7 @@ export const NewTrip = ({ user }: NewTripProps) => {
       alert("Fahrt erfolgreich beendet und gespeichert!");
       setTimeout(() => {
         setTripData({
-          startKm: "",
-          endKm: "",
-          startLocation: "",
-          endLocation: "",
+          checkpoints: [],
           purpose: "",
           isStarted: false,
           isCompleted: false,
@@ -169,6 +200,8 @@ export const NewTrip = ({ user }: NewTripProps) => {
           detour: false,
           detourReason: ""
         });
+        setRoute([]);
+        setInputValues([]);
       }, 2000);
       saveFavorite('partner', tripData.businessPartner);
     } catch (e) {
@@ -178,10 +211,7 @@ export const NewTrip = ({ user }: NewTripProps) => {
 
   const handleReset = () => {
     setTripData({
-      startKm: "",
-      endKm: "",
-      startLocation: "",
-      endLocation: "",
+      checkpoints: [],
       purpose: "",
       isStarted: false,
       isCompleted: false,
@@ -191,6 +221,19 @@ export const NewTrip = ({ user }: NewTripProps) => {
       detour: false,
       detourReason: ""
     });
+  };
+
+  const saveFavorite = (type: 'partner' | 'purpose', value: string) => {
+    if (!value.trim()) return;
+    if (type === 'partner') {
+      const favs = [value, ...partnerFavorites.filter(f => f !== value)].slice(0, 5);
+      setPartnerFavorites(favs);
+      localStorage.setItem('partnerFavorites', JSON.stringify(favs));
+    } else {
+      const favs = [value, ...purposeFavorites.filter(f => f !== value)].slice(0, 5);
+      setPurposeFavorites(favs);
+      localStorage.setItem('purposeFavorites', JSON.stringify(favs));
+    }
   };
 
   return (
@@ -235,31 +278,31 @@ export const NewTrip = ({ user }: NewTripProps) => {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="startKm">
+                  <Label htmlFor="checkpointKm">
                     Start Kilometerstand
                     <span title="Pflichtfeld. Muss exakt mit dem Tacho übereinstimmen." className="inline-block align-middle ml-1 text-blue-500 cursor-help">
                       <Info className="inline h-4 w-4" />
                     </span>
                   </Label>
                   <Input
-                    id="startKm"
+                    id="checkpointKm"
                     type="number"
-                    value={tripData.startKm}
-                    onChange={(e) => setTripData({ ...tripData, startKm: e.target.value })}
+                    value={newCheckpoint.km}
+                    onChange={(e) => setNewCheckpoint({ ...newCheckpoint, km: e.target.value })}
                     placeholder="z.B. 50000"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="startLocation">Startort</Label>
+                  <Label htmlFor="checkpointLocation">Startort</Label>
                   <Input
-                    id="startLocation"
-                    value={tripData.startLocation}
-                    onChange={(e) => setTripData({ ...tripData, startLocation: e.target.value })}
+                    id="checkpointLocation"
+                    value={newCheckpoint.location}
+                    onChange={(e) => setNewCheckpoint({ ...newCheckpoint, location: e.target.value })}
                     placeholder="z.B. Büro München"
                   />
                 </div>
               </div>
-              
+              <Button onClick={handleAddCheckpoint} className="mt-2">Startpunkt hinzufügen</Button>
               <div>
                 <Label htmlFor="purpose">
                   Zweck der Fahrt
@@ -275,47 +318,90 @@ export const NewTrip = ({ user }: NewTripProps) => {
                   rows={3}
                 />
               </div>
+              {tripData.checkpoints.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-semibold">Bisherige Checkpoints</h4>
+                  <ul className="list-disc ml-6">
+                    {tripData.checkpoints.map((cp, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        {cp.location} • {cp.km} km um {cp.time}
+                        <Button size="sm" variant="ghost" onClick={() => handleRemoveCheckpoint(idx)} disabled={tripData.isStarted}>Entfernen</Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
           ) : (
             <>
               <div className="bg-green-50 p-4 rounded-lg mb-4">
                 <h3 className="font-medium text-green-800">Fahrt gestartet</h3>
                 <p className="text-sm text-green-600">
-                  Start: {tripData.startLocation} • {tripData.startKm} km um {tripData.startTime}
+                  Start: {tripData.checkpoints[0]?.location} • {tripData.checkpoints[0]?.km} km um {tripData.startTime}
                 </p>
                 <p className="text-sm text-green-600">
                   Zweck: {tripData.purpose}
                 </p>
               </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="endKm">
-                    End Kilometerstand
+                  <Label htmlFor="checkpointKm">
+                    Nächster Checkpoint Kilometerstand
                     <span title="Pflichtfeld. Muss exakt mit dem Tacho übereinstimmen." className="inline-block align-middle ml-1 text-blue-500 cursor-help">
                       <Info className="inline h-4 w-4" />
                     </span>
                   </Label>
                   <Input
-                    id="endKm"
+                    id="checkpointKm"
                     type="number"
-                    value={tripData.endKm}
-                    onChange={(e) => setTripData({ ...tripData, endKm: e.target.value })}
-                    placeholder="z.B. 50125"
+                    value={newCheckpoint.km}
+                    onChange={(e) => setNewCheckpoint({ ...newCheckpoint, km: e.target.value })}
+                    placeholder="z.B. 50100"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="endLocation">Zielort</Label>
+                  <Label htmlFor="checkpointLocation">Checkpoint-Ort</Label>
                   <Input
-                    id="endLocation"
-                    value={tripData.endLocation}
-                    onChange={(e) => setTripData({ ...tripData, endLocation: e.target.value })}
-                    placeholder="z.B. Kunde Berlin"
+                    id="checkpointLocation"
+                    value={newCheckpoint.location}
+                    onChange={(e) => setNewCheckpoint({ ...newCheckpoint, location: e.target.value })}
+                    placeholder="z.B. Zwischenstopp, Zielort"
                   />
                 </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button onClick={handleAddCheckpoint} className="mt-2">Checkpoint hinzufügen</Button>
+              <div className="mt-4">
+                <h4 className="font-semibold">Bisherige Checkpoints</h4>
+                <ol className="space-y-4">
+                  {route.map((cp, idx) => (
+                    <li key={idx} className="border rounded-lg p-4 bg-gray-50">
+                      <div className="font-bold text-lg">
+                        {idx === 0 ? "Start" : idx === route.length - 1 ? "Ziel" : `Zwischenhalt ${idx}`}: {cp.location}
+                      </div>
+                      <div className="flex flex-col md:flex-row gap-4 mt-2">
+                        <div>
+                          <Label>Kilometerstand *</Label>
+                          <Input
+                            type="number"
+                            value={inputValues[idx]?.km || ""}
+                            onChange={e => handleInputChange(idx, 'km', e.target.value)}
+                            placeholder="z.B. 50000"
+                          />
+                        </div>
+                        <div>
+                          <Label>Uhrzeit *</Label>
+                          <Input
+                            type="time"
+                            value={inputValues[idx]?.time || ""}
+                            onChange={e => handleInputChange(idx, 'time', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
                   <Label htmlFor="businessPartner">
                     Geschäftspartner *
@@ -363,10 +449,9 @@ export const NewTrip = ({ user }: NewTripProps) => {
                 )}
                 {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
               </div>
-              
-              <div className="flex gap-2">
-                <Button onClick={handleEndTrip} className="flex-1">
-                  Fahrt beenden
+              <div className="flex gap-2 mt-4">
+                <Button onClick={handleEndTrip} className="flex-1" disabled={inputValues.some(v => !v.km.trim() || !v.time.trim())}>
+                  Fahrt abschließen
                 </Button>
                 <Button onClick={handleReset} variant="outline">
                   Abbrechen
